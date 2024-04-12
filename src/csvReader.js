@@ -7,13 +7,8 @@ function readCSV(filePath) {
     const results = [];
 
     return new Promise((resolve, reject) => {
-        const stream = fs.createReadStream(filePath);
-
-        stream.on('error', (error) => {
-            reject(error);
-        });
-
-        stream.pipe(csv())
+        fs.createReadStream(filePath)
+            .pipe(csv())
             .on('data', (data) => results.push(data))
             .on('end', () => {
                 resolve(results);
@@ -24,4 +19,4 @@ function readCSV(filePath) {
     });
 }
 
-module.exports = { readCSV };
+module.exports = { readCSV }; // Export readCSV as an object property
