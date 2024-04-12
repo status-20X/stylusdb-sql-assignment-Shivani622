@@ -1,3 +1,5 @@
+// src/queryParser.js
+
 function parseWhereClause(whereString) {
     const conditionRegex = /(.*?)(=|!=|>|<|>=|<=)(.*)/;
     return whereString.split(/ AND | OR /i).map(conditionString => {
@@ -8,6 +10,28 @@ function parseWhereClause(whereString) {
         }
         throw new Error('Invalid WHERE clause format');
     });
+}
+
+function parseJoinClause(query) {
+    const joinRegex = /\s(INNER|LEFT|RIGHT) JOIN\s(.+?)\sON\s([\w.]+)\s*=\s*([\w.]+)/i;
+    const joinMatch = query.match(joinRegex);
+
+    if (joinMatch) {
+        return {
+            joinType: joinMatch[1].trim(),
+            joinTable: joinMatch[2].trim(),
+            joinCondition: {
+                left: joinMatch[3].trim(),
+                right: joinMatch[4].trim()
+            }
+        };
+    }
+
+    return {
+        joinType: null,
+        joinTable: null,
+        joinCondition: null
+    };
 }
 
 function parseQuery(query) {
@@ -22,7 +46,7 @@ function parseQuery(query) {
     const whereClause = whereSplit.length > 1 ? whereSplit[1].trim() : null;
 
     // Split the remaining query at the JOIN clause if it exists
-    const joinSplit = query.split(/\sINNER JOIN\s/i);
+    const joinSplit = query.split(/\sINNER JOIN\s|\sLEFT JOIN\s|\sRIGHT JOIN\s/i);
     selectPart = joinSplit[0].trim(); // Everything before JOIN clause
 
     // JOIN clause is the second part after splitting, if it exists
@@ -38,20 +62,7 @@ function parseQuery(query) {
     const [, fields, table] = selectMatch;
 
     // Parse the JOIN part if it exists
-    let joinTable = null, joinCondition = null;
-    if (joinPart) {
-        const joinRegex = /^(.+?)\sON\s([\w.]+)\s*=\s*([\w.]+)/i;
-        const joinMatch = joinPart.match(joinRegex);
-        if (!joinMatch) {
-            throw new Error('Invalid JOIN format');
-        }
-
-        joinTable = joinMatch[1].trim();
-        joinCondition = {
-            left: joinMatch[2].trim(),
-            right: joinMatch[3].trim()
-        };
-    }
+    const { joinType, joinTable, joinCondition } = parseJoinClause(joinPart);
 
     // Parse the WHERE part if it exists
     let whereClauses = [];
@@ -63,6 +74,7 @@ function parseQuery(query) {
         fields: fields.split(',').map(field => field.trim()),
         table: table.trim(),
         whereClauses,
+        joinType,
         joinTable,
         joinCondition
     };
